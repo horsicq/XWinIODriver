@@ -55,8 +55,8 @@
     <RunCodeAnalysis>true</RunCodeAnalysis>
     <EnableInf2cat>false</EnableInf2cat>
     <TargetName>xwiniodriver</TargetName>
-    <OutDir>.\output\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>.\output\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>.\build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>.\build\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -64,8 +64,8 @@
     <RunCodeAnalysis>true</RunCodeAnalysis>
     <EnableInf2cat>false</EnableInf2cat>
     <TargetName>xwiniodriver</TargetName>
-    <OutDir>.\output\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>.\output\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>.\build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>.\build\$(Platform)\$(Configuration)\</IntDir>
     <TimeStampServer />
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
