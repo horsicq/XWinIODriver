@@ -21,19 +21,21 @@
 #ifndef XWINIODRIVER_H
 #define XWINIODRIVER_H
 
-#include <QObject>
-#include <Windows.h>
 #include "xprocess.h"
 
-class XWinIODriver : public QObject
+class XWinIODriver : public XIODevice
 {
     Q_OBJECT
 
 public:
     XWinIODriver(QObject *pParent=nullptr);
+    XWinIODriver(QString sServiceName,qint64 nProcessID,quint64 nAddress,quint64 nSize,QObject *pParent=nullptr);
 
-    HANDLE loadDriver(QString sFileName,QString sServiceName="X_KERNEL_DRIVER");
-    bool unloadDriver(QString sServiceName="X_KERNEL_DRIVER");
+    virtual bool open(OpenMode mode);
+    virtual void close();
+
+    bool loadDriver(QString sFileName,QString sServiceName="XWINIODRIVER");
+    bool unloadDriver(QString sServiceName="XWINIODRIVER");
 
 private:
     bool installDriver(SC_HANDLE hSCManager,QString sServiceName,QString sFileName);
@@ -49,6 +51,9 @@ signals:
 private:
     HANDLE g_hDriver;
     QString g_sServiceName;
+    qint64 g_nProcessID;
+    quint64 g_nAddress;
+    quint64 g_nSize;
 };
 
 #endif // XWINIODRIVER_H

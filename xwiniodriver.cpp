@@ -20,38 +20,121 @@
  */
 #include "xwiniodriver.h"
 
-XWinIODriver::XWinIODriver(QObject *pParent) : QObject(pParent)
+XWinIODriver::XWinIODriver(QObject *pParent) : XIODevice(pParent)
 {
     g_hDriver=0;
+    g_nProcessID=0;
+    g_nAddress=0;
+    g_nSize=0;
 }
 
-HANDLE XWinIODriver::loadDriver(QString sFileName, QString sServiceName)
+XWinIODriver::XWinIODriver(QString sServiceName, qint64 nProcessID, quint64 nAddress, quint64 nSize, QObject *pParent) : XWinIODriver(pParent)
 {
-    HANDLE hResult=0;
+    g_sServiceName=sServiceName;
+    g_nProcessID=nProcessID;
+    g_nAddress=nAddress;
+    g_nSize=nSize;
+}
 
-    SC_HANDLE hSCManager=OpenSCManagerW(NULL,NULL,SC_MANAGER_ALL_ACCESS);
+bool XWinIODriver::open(OpenMode mode)
+{
+    bool bResult=false;
 
-    if(hSCManager)
+    if(g_nProcessID&&size()) // TODO more checks
     {
-//        removeDriver(hSCManager,sServiceName);
-        installDriver(hSCManager,sServiceName,sFileName);
+        quint32 nFlag=0;
 
-        if(startDriver(hSCManager,sServiceName))
+        if(mode==ReadOnly)
         {
-            hResult=openDevice(sServiceName);
+            nFlag=GENERIC_READ;
+        }
+        else if(mode==WriteOnly)
+        {
+            nFlag=GENERIC_WRITE;
+        }
+        else if(mode==ReadWrite)
+        {
+            nFlag=GENERIC_READ|GENERIC_WRITE;
         }
 
-        CloseServiceHandle(hSCManager);
+        g_hDriver=OpenProcess(nFlag,0,(DWORD)g_nProcessID);
+
+        QString sCompleteDeviceName=QString("\\\\.\\%1").arg(g_sServiceName);
+
+        HANDLE hDevice=CreateFileW((LPCWSTR)(sCompleteDeviceName.utf16()),
+                                    nFlag,
+                                    0,
+                                    NULL,
+                                    OPEN_EXISTING,
+                                    FILE_ATTRIBUTE_NORMAL,
+                                    NULL);
+
+        bResult=(hDevice!=INVALID_HANDLE_VALUE);
+
+        if(bResult)
+        {
+            g_hDriver=hDevice;
+        }
+    }
+
+    if(bResult)
+    {
+        setOpenMode(mode);
+    }
+
+    return bResult;
+}
+
+void XWinIODriver::close()
+{
+    bool bSuccess=false;
+
+    if(g_nProcessID&&g_hDriver)
+    {
+        bSuccess=CloseHandle(g_hDriver);
+    }
+
+    if(bSuccess)
+    {
+        setOpenMode(NotOpen);
+    }
+}
+
+bool XWinIODriver::loadDriver(QString sFileName, QString sServiceName)
+{
+    bool bResult=0;
+
+    if(XBinary::isFileExists(sFileName))
+    {
+        SC_HANDLE hSCManager=OpenSCManagerW(NULL,NULL,SC_MANAGER_ALL_ACCESS);
+
+        if(hSCManager)
+        {
+    //        removeDriver(hSCManager,sServiceName);
+            installDriver(hSCManager,sServiceName,sFileName);
+
+            if(startDriver(hSCManager,sServiceName))
+            {
+                bResult=true;
+//                hResult=openDevice(sServiceName);
+            }
+
+            CloseServiceHandle(hSCManager);
+        }
+        else
+        {
+        #ifdef QT_DEBUG
+            qDebug("%s",XProcess::getLastErrorAsString().toUtf8().data());
+        #endif
+            emit errorMessage(QString("XWinIODriver::loadDriver: %1").arg(XProcess::getLastErrorAsString()));
+        }
     }
     else
     {
-    #ifdef QT_DEBUG
-        qDebug("%s",XProcess::getLastErrorAsString().toUtf8().data());
-    #endif
-        emit errorMessage(QString("XWinIODriver::loadDriver: %1").arg(XProcess::getLastErrorAsString()));
+        emit errorMessage(QString("XWinIODriver::loadDriver: %1: %2").arg(tr("Cannot open file"),sFileName));
     }
 
-    return hResult;
+    return bResult;
 }
 
 bool XWinIODriver::unloadDriver(QString sServiceName)
@@ -159,6 +242,11 @@ bool XWinIODriver::startDriver(SC_HANDLE hSCManager, QString sServiceName)
             qDebug("%s",XProcess::getLastErrorAsString().toUtf8().data());
         #endif
             emit errorMessage(QString("XWinIODriver::startDriver: %1").arg(XProcess::getLastErrorAsString()));
+
+            if(GetLastError()==ERROR_SERVICE_ALREADY_RUNNING)
+            {
+                bResult=true;
+            }
         }
 
         CloseServiceHandle(hSCService);
