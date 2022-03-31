@@ -23,17 +23,16 @@
 XWinIODriver::XWinIODriver(QObject *pParent) : XIODevice(pParent)
 {
     g_hDriver=0;
+    g_hProcess=0;
     g_nProcessID=0;
-    g_nAddress=0;
-    g_nSize=0;
 }
 
 XWinIODriver::XWinIODriver(QString sServiceName, qint64 nProcessID, quint64 nAddress, quint64 nSize, QObject *pParent) : XWinIODriver(pParent)
 {
     g_sServiceName=sServiceName;
     g_nProcessID=nProcessID;
-    g_nAddress=nAddress;
-    g_nSize=nSize;
+    setInitOffset(nAddress);
+    setSize(nSize);
 }
 
 bool XWinIODriver::open(OpenMode mode)
@@ -57,8 +56,6 @@ bool XWinIODriver::open(OpenMode mode)
             nFlag=GENERIC_READ|GENERIC_WRITE;
         }
 
-        g_hDriver=OpenProcess(nFlag,0,(DWORD)g_nProcessID);
-
         QString sCompleteDeviceName=QString("\\\\.\\%1").arg(g_sServiceName);
 
         HANDLE hDevice=CreateFileW((LPCWSTR)(sCompleteDeviceName.utf16()),
@@ -74,6 +71,10 @@ bool XWinIODriver::open(OpenMode mode)
         if(bResult)
         {
             g_hDriver=hDevice;
+
+            g_hProcess=openProcess(g_hDriver,g_nProcessID);
+
+            bResult=(g_hProcess!=nullptr);
         }
     }
 
@@ -89,7 +90,12 @@ void XWinIODriver::close()
 {
     bool bSuccess=false;
 
-    if(g_nProcessID&&g_hDriver)
+    if(g_hProcess)
+    {
+        closeProcess(g_hDriver,g_hProcess);
+    }
+
+    if(g_hDriver)
     {
         bSuccess=CloseHandle(g_hDriver);
     }
@@ -98,6 +104,52 @@ void XWinIODriver::close()
     {
         setOpenMode(NotOpen);
     }
+}
+
+qint64 XWinIODriver::readData(char *pData, qint64 nMaxSize)
+{
+    qint64 nResult=0;
+
+    qint64 _nPos=pos();
+
+    nMaxSize=qMin(nMaxSize,(qint64)(size()-_nPos));
+
+    for(qint64 i=0;i<nMaxSize;)
+    {
+        qint64 nDelta=S_ALIGN_UP(_nPos,N_BUFFER_SIZE)-_nPos;
+
+        if(nDelta==0)
+        {
+            nDelta=N_BUFFER_SIZE;
+        }
+
+        nDelta=qMin(nDelta,(qint64)(nMaxSize-i));
+
+        if(nDelta==0)
+        {
+            break;
+        }
+
+        if(read_array(g_hDriver,g_hProcess,getInitOffset()+_nPos,pData,nDelta)!=nDelta)
+        {
+            break;
+        }
+
+        _nPos+=nDelta;
+        pData+=nDelta;
+        nResult+=nDelta;
+        i+=nDelta;
+    }
+
+    return nResult;
+}
+
+qint64 XWinIODriver::writeData(const char *pData, qint64 nMaxSize)
+{
+    Q_UNUSED(pData)
+    Q_UNUSED(nMaxSize)
+
+    return 0;
 }
 
 bool XWinIODriver::loadDriver(QString sFileName, QString sServiceName)
@@ -110,7 +162,7 @@ bool XWinIODriver::loadDriver(QString sFileName, QString sServiceName)
 
         if(hSCManager)
         {
-    //        removeDriver(hSCManager,sServiceName);
+            removeDriver(hSCManager,sServiceName);
             installDriver(hSCManager,sServiceName,sFileName);
 
             if(startDriver(hSCManager,sServiceName))
@@ -305,7 +357,7 @@ bool XWinIODriver::stopDriver(SC_HANDLE hSCManager, QString sServiceName)
     return bResult;
 }
 
-HANDLE XWinIODriver::openDevice(QString sServiceName)
+HANDLE XWinIODriver::openDriverDevice(QString sServiceName)
 {
     HANDLE hResult=0;
 
@@ -328,8 +380,218 @@ HANDLE XWinIODriver::openDevice(QString sServiceName)
     #ifdef QT_DEBUG
         qDebug("%s",XProcess::getLastErrorAsString().toUtf8().data());
     #endif
-        emit errorMessage(QString("XWinIODriver::stopDriver: %1").arg(XProcess::getLastErrorAsString()));
     }
 
     return hResult;
+}
+
+void XWinIODriver::closeDriverDevice(HANDLE hDriverDevice)
+{
+    CloseHandle(hDriverDevice);
+}
+
+quint64 XWinIODriver::getEPROCESSAddress(HANDLE hDriverDevice, qint64 nProcessID)
+{
+    quint64 nResult=0;
+
+    long long nTemp=0;
+    HANDLE pEPROCESS=0;
+    HANDLE hProcessID=(HANDLE)nProcessID;
+
+    if(DeviceIoControl(hDriverDevice,IOCTL_GETEPROCESS,&hProcessID,sizeof(HANDLE),&pEPROCESS,sizeof(HANDLE),(LPDWORD)&nTemp,0))
+    {
+        if(nTemp)
+        {
+            nResult=(quint64)pEPROCESS;
+        }
+    }
+
+    return nResult;
+}
+
+QList<quint64> XWinIODriver::getKPCRAddresses(HANDLE hDriverDevice, qint64 nProcessID)
+{
+    QList<quint64> listResult;
+
+    long long nTemp=0;
+
+    char buffer[sizeof(void *)*256];
+
+    DeviceIoControl(hDriverDevice,IOCTL_GETKPCRS,0,0,buffer,sizeof(void *)*256,(LPDWORD)&nTemp,0);
+
+    for(qint32 i=0;i<nTemp/(sizeof(void *));i++)
+    {
+        quint64 nAddress=(quint64)(*(HANDLE *)&(buffer[sizeof(void *)*i]));
+
+        listResult.append(nAddress);
+    }
+
+    return listResult;
+}
+
+void *XWinIODriver::openProcess(HANDLE hDriverDevice, qint64 nProcessID)
+{
+    void *pResult=0;
+
+    long long nTemp=0;
+    HANDLE hProcessHandle=0;
+    HANDLE hProcessID=(HANDLE)nProcessID;
+
+    if(DeviceIoControl(hDriverDevice,IOCTL_OPENPROCESS,&hProcessID,sizeof(HANDLE),&hProcessHandle,sizeof(HANDLE),(LPDWORD)&nTemp,0))
+    {
+        if(nTemp)
+        {
+            pResult=(void *)hProcessHandle;
+        }
+    }
+
+    return pResult;
+}
+
+void XWinIODriver::closeProcess(HANDLE hDriverDevice, void *hProcess)
+{
+    long long nTemp=0;
+    HANDLE hProcessHandle=hProcess;
+
+    DeviceIoControl(hDriverDevice,IOCTL_CLOSEPROCESS,&hProcessHandle,sizeof(HANDLE),0,0,(LPDWORD)&nTemp,0);
+}
+
+quint64 XWinIODriver::read_array(HANDLE hDriverDevice, void *hProcess, quint64 nAddress, char *pData, quint64 nSize)
+{
+    quint64 nResult=0;
+
+    long long nTemp=0;
+    PROCESSMEMORY pm={};
+
+    pm.pProcessHandle=hProcess;
+    pm.pMemoryAddress=(void *)nAddress;
+    pm.nMemorySize=nSize;
+
+    if(DeviceIoControl(hDriverDevice,IOCTL_READPROCESSMEMORY,&pm,sizeof(pm),pData,nSize,(LPDWORD)&nTemp,0))
+    {
+        nResult=nTemp;
+    }
+
+    return nResult;
+}
+
+quint8 XWinIODriver::read_uint8(HANDLE hDriverDevice, void *hProcess, quint64 nAddress)
+{
+    quint8 nResult=0;
+
+    read_array(hDriverDevice,hProcess,nAddress,(char *)&nResult,1);
+
+    return nResult;
+}
+
+quint16 XWinIODriver::read_uint16(HANDLE hDriverDevice, void *hProcess, quint64 nAddress, bool bIsBigEndian)
+{
+    quint16 nResult=0;
+
+    read_array(hDriverDevice,hProcess,nAddress,(char *)&nResult,2);
+
+    if(bIsBigEndian)
+    {
+        nResult=qFromBigEndian(nResult);
+    }
+    else
+    {
+        nResult=qFromLittleEndian(nResult);
+    }
+
+    return nResult;
+}
+
+quint32 XWinIODriver::read_uint32(HANDLE hDriverDevice, void *hProcess, quint64 nAddress, bool bIsBigEndian)
+{
+    quint32 nResult=0;
+
+    read_array(hDriverDevice,hProcess,nAddress,(char *)&nResult,4);
+
+    if(bIsBigEndian)
+    {
+        nResult=qFromBigEndian(nResult);
+    }
+    else
+    {
+        nResult=qFromLittleEndian(nResult);
+    }
+
+    return nResult;
+}
+
+quint64 XWinIODriver::read_uint64(HANDLE hDriverDevice, void *hProcess, quint64 nAddress, bool bIsBigEndian)
+{
+    quint64 nResult=0;
+
+    read_array(hDriverDevice,hProcess,nAddress,(char *)&nResult,8);
+
+    if(bIsBigEndian)
+    {
+        nResult=qFromBigEndian(nResult);
+    }
+    else
+    {
+        nResult=qFromLittleEndian(nResult);
+    }
+
+    return nResult;
+}
+
+QString XWinIODriver::read_ansiString(HANDLE hDriverDevice, void *hProcess, quint64 nAddress, quint64 nMaxSize)
+{
+    char *pBuffer=new char[nMaxSize+1];
+    QString sResult;
+    quint32 i=0;
+
+    for(;i<nMaxSize;i++)
+    {
+        if(!read_array(hDriverDevice,hProcess,nAddress+i,&(pBuffer[i]),1))
+        {
+            break;
+        }
+
+        if(pBuffer[i]==0)
+        {
+            break;
+        }
+    }
+
+    pBuffer[i]=0;
+    sResult.append(pBuffer);
+
+    delete [] pBuffer;
+
+    return sResult;
+}
+
+QString XWinIODriver::read_unicodeString(HANDLE hDriverDevice, void *hProcess, quint64 nAddress, quint64 nMaxSize)
+{
+    QString sResult;
+
+    if(nMaxSize)
+    {
+        quint16 *pBuffer=new quint16[nMaxSize+1];
+
+        for(qint32 i=0;i<nMaxSize;i++)
+        {
+            pBuffer[i]=read_uint16(hDriverDevice,hProcess,nAddress+2*i);
+
+            if(pBuffer[i]==0)
+            {
+                break;
+            }
+
+            if(i==nMaxSize-1)
+            {
+                pBuffer[nMaxSize]=0;
+            }
+        }
+
+        sResult=QString::fromUtf16(pBuffer);
+
+        delete [] pBuffer;
+    }
+
+    return sResult;
 }
