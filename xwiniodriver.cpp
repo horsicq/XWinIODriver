@@ -247,7 +247,7 @@ bool XWinIODriver::installDriver(SC_HANDLE hSCManager, QString sServiceName, QSt
     return bResult;
 }
 
-bool XWinIODriver::removeDriver(SC_HANDLE hSCManager, QString sServiceName)
+bool XWinIODriver::removeDriver(SC_HANDLE hSCManager,QString sServiceName)
 {
     bool bResult=false;
 
