@@ -475,7 +475,7 @@ quint64 XWinIODriver::read_array(HANDLE hDriverDevice,void *hProcess,quint64 nAd
     return nResult;
 }
 
-quint8 XWinIODriver::read_uint8(HANDLE hDriverDevice, void *hProcess, quint64 nAddress)
+quint8 XWinIODriver::read_uint8(HANDLE hDriverDevice,void *hProcess,quint64 nAddress)
 {
     quint8 nResult=0;
 
