@@ -520,7 +520,7 @@ quint32 XWinIODriver::read_uint32(HANDLE hDriverDevice, void *hProcess, quint64 
     return nResult;
 }
 
-quint64 XWinIODriver::read_uint64(HANDLE hDriverDevice, void *hProcess, quint64 nAddress, bool bIsBigEndian)
+quint64 XWinIODriver::read_uint64(HANDLE hDriverDevice,void *hProcess,quint64 nAddress,bool bIsBigEndian)
 {
     quint64 nResult=0;
 
