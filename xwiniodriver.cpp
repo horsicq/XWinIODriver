@@ -456,7 +456,7 @@ void XWinIODriver::closeProcess(HANDLE hDriverDevice,void *hProcess)
     DeviceIoControl(hDriverDevice,IOCTL_CLOSEPROCESS,&hProcessHandle,sizeof(HANDLE),0,0,(LPDWORD)&nTemp,0);
 }
 
-quint64 XWinIODriver::read_array(HANDLE hDriverDevice, void *hProcess, quint64 nAddress, char *pData, quint64 nSize)
+quint64 XWinIODriver::read_array(HANDLE hDriverDevice,void *hProcess,quint64 nAddress,char *pData,quint64 nSize)
 {
     quint64 nResult=0;
 
