@@ -538,7 +538,7 @@ quint64 XWinIODriver::read_uint64(HANDLE hDriverDevice,void *hProcess,quint64 nA
     return nResult;
 }
 
-QString XWinIODriver::read_ansiString(HANDLE hDriverDevice, void *hProcess, quint64 nAddress, quint64 nMaxSize)
+QString XWinIODriver::read_ansiString(HANDLE hDriverDevice,void *hProcess,quint64 nAddress,quint64 nMaxSize)
 {
     char *pBuffer=new char[nMaxSize+1];
     QString sResult;
