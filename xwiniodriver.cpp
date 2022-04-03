@@ -448,7 +448,7 @@ void *XWinIODriver::openProcess(HANDLE hDriverDevice, qint64 nProcessID)
     return pResult;
 }
 
-void XWinIODriver::closeProcess(HANDLE hDriverDevice, void *hProcess)
+void XWinIODriver::closeProcess(HANDLE hDriverDevice,void *hProcess)
 {
     long long nTemp=0;
     HANDLE hProcessHandle=hProcess;
