@@ -565,7 +565,7 @@ QString XWinIODriver::read_ansiString(HANDLE hDriverDevice,void *hProcess,quint6
     return sResult;
 }
 
-QString XWinIODriver::read_unicodeString(HANDLE hDriverDevice, void *hProcess, quint64 nAddress, quint64 nMaxSize)
+QString XWinIODriver::read_unicodeString(HANDLE hDriverDevice,void *hProcess,quint64 nAddress,quint64 nMaxSize)
 {
     QString sResult;
 
