@@ -144,7 +144,7 @@ qint64 XWinIODriver::readData(char *pData,qint64 nMaxSize)
     return nResult;
 }
 
-qint64 XWinIODriver::writeData(const char *pData, qint64 nMaxSize)
+qint64 XWinIODriver::writeData(const char *pData,qint64 nMaxSize)
 {
     Q_UNUSED(pData)
     Q_UNUSED(nMaxSize)
