@@ -106,7 +106,7 @@ void XWinIODriver::close()
     }
 }
 
-qint64 XWinIODriver::readData(char *pData, qint64 nMaxSize)
+qint64 XWinIODriver::readData(char *pData,qint64 nMaxSize)
 {
     qint64 nResult=0;
 
