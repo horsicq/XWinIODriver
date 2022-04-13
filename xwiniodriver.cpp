@@ -212,7 +212,7 @@ bool XWinIODriver::unloadDriver(QString sServiceName)
     return bResult;
 }
 
-bool XWinIODriver::installDriver(SC_HANDLE hSCManager, QString sServiceName, QString sFileName)
+bool XWinIODriver::installDriver(SC_HANDLE hSCManager,QString sServiceName,QString sFileName)
 {
     bool bResult=false;
 
