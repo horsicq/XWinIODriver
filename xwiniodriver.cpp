@@ -152,7 +152,7 @@ qint64 XWinIODriver::writeData(const char *pData,qint64 nMaxSize)
     return 0;
 }
 
-bool XWinIODriver::loadDriver(QString sFileName, QString sServiceName)
+bool XWinIODriver::loadDriver(QString sFileName,QString sServiceName)
 {
     bool bResult=0;
 
