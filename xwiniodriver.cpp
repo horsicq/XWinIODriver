@@ -31,7 +31,7 @@ XWinIODriver::XWinIODriver(QString sServiceName,qint64 nProcessID,quint64 nAddre
 {
     g_sServiceName=sServiceName;
     g_nProcessID=nProcessID;
-    setInitOffset(nAddress);
+    setInitLocation(nAddress);
     setSize(nSize);
 }
 
@@ -130,7 +130,7 @@ qint64 XWinIODriver::readData(char *pData,qint64 nMaxSize)
             break;
         }
 
-        if(read_array(g_hDriver,g_hProcess,getInitOffset()+_nPos,pData,nDelta)!=nDelta)
+        if(read_array(g_hDriver,g_hProcess,getInitLocation()+_nPos,pData,nDelta)!=nDelta)
         {
             break;
         }
