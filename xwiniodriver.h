@@ -46,7 +46,7 @@ class XWinIODriver : public XIODevice {
 
 public:
     XWinIODriver(QObject *pParent = nullptr);
-    XWinIODriver(QString sServiceName, qint64 nProcessID, quint64 nAddress, quint64 nSize, QObject *pParent = nullptr);
+    XWinIODriver(const QString &sServiceName, qint64 nProcessID, quint64 nAddress, quint64 nSize, QObject *pParent = nullptr);
 
     virtual bool open(OpenMode mode);
     virtual void close();

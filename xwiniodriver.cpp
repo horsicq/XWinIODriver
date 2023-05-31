@@ -27,7 +27,7 @@ XWinIODriver::XWinIODriver(QObject *pParent) : XIODevice(pParent)
     g_nProcessID = 0;
 }
 
-XWinIODriver::XWinIODriver(QString sServiceName, qint64 nProcessID, quint64 nAddress, quint64 nSize, QObject *pParent) : XWinIODriver(pParent)
+XWinIODriver::XWinIODriver(const QString &sServiceName, qint64 nProcessID, quint64 nAddress, quint64 nSize, QObject *pParent) : XWinIODriver(pParent)
 {
     g_sServiceName = sServiceName;
     g_nProcessID = nProcessID;
